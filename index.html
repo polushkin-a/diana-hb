@@ -39,6 +39,56 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Стартер оверлей в стилистике страницы */
+        #starter-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: pointer;
+            transition: opacity 0.8s ease;
+        }
+
+        .starter-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-hover);
+            padding: 48px 40px;
+            border-radius: 12px;
+            text-align: center;
+            transition: border-color 0.3s ease, transform 0.3s ease;
+        }
+
+        #starter-overlay:hover .starter-box {
+            border-color: var(--border-accent);
+            transform: translateY(-4px);
+        }
+
+        #starter-overlay h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            color: var(--accent-red);
+            margin-bottom: 12px;
+        }
+
+        #starter-overlay p {
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
         header {
             max-width: 1200px;
             margin: 0 auto 50px;
@@ -125,7 +175,29 @@
             transform: translateY(-5px);
         }
 
-        /* Шапка карточки */
+        /* Анимация при качау */
+        .card.kachow-anim {
+            animation: kachowBounce 0.5s ease;
+        }
+
+        @keyframes kachowBounce {
+            0% {
+                transform: scale(1);
+            }
+
+            30% {
+                transform: scale(1.05) rotate(1deg);
+            }
+
+            60% {
+                transform: scale(0.98) rotate(-1deg);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
         .card-header {
             padding: 20px 24px 16px;
             display: flex;
@@ -158,7 +230,6 @@
             border-radius: 4px;
         }
 
-        /* Экраны */
         .view {
             position: absolute;
             top: 64px;
@@ -184,7 +255,6 @@
             pointer-events: auto;
         }
 
-        /* 1. Изображение */
         .view-image {
             padding: 0;
             background: #f5f3f0;
@@ -203,7 +273,6 @@
             transform: scale(1.04);
         }
 
-        /* 2 & 3. Описание и ноты */
         .view h4 {
             font-family: 'Cormorant Garamond', serif;
             color: var(--accent-red);
@@ -242,7 +311,6 @@
             font-weight: 400;
         }
 
-        /* Футер */
         .card-footer {
             position: absolute;
             bottom: 0;
@@ -304,6 +372,13 @@
 
 <body>
 
+    <div id="starter-overlay" onclick="startApp()">
+        <div class="starter-box">
+            <h2>Start Engine</h2>
+            <p>Нажми чтобы войти</p>
+        </div>
+    </div>
+
     <header>
         <div class="lang-switch">
             <button class="lang-btn active" onclick="setLanguage('ru')">RU</button>
@@ -318,7 +393,68 @@
     <script>
         let currentLang = 'ru';
 
-        const svgPlaceholder = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" fill="%23faf8f5"><rect width="300" height="400"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%238b0029" letter-spacing="2">LULUA PARFUM</text></svg>`;
+        const kachowSounds = [
+            './kachow.mp3',
+            './kachow2.mp3',
+            './kachow3.mp3'
+        ];
+
+        function playAudio(src, volume = 1.0) {
+            try {
+                const audio = new Audio(src);
+                audio.volume = volume;
+                const promise = audio.play();
+                if (promise !== undefined) {
+                    promise.catch(err => {
+                        console.warn("Аудио файл заблокирован или не найден:", src, err);
+                    });
+                }
+                return audio;
+            } catch (e) {
+                console.warn("Ошибка воспроизведения аудио:", e);
+                return null;
+            }
+        }
+
+        function startApp() {
+            const overlay = document.getElementById('starter-overlay');
+
+            // Запускаем starter.mp3
+            const starterAudio = playAudio('./starter.mp3', 1.0);
+
+            // Плавное исчезновение стартового экрана
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 800);
+
+            // Затухание звука: стартует на 14-й секунде и за 5 секунд уводит громкость в 0
+            if (starterAudio) {
+                const totalDuration = 19; // Общая длина трека в секундах
+                const fadeDuration = 5;   // Длительность затухания
+                const fadeStart = (totalDuration - fadeDuration) * 1000; // 14000 мс
+
+                setTimeout(() => {
+                    const stepTime = 100; // Шаг обновления каждые 100 мс
+                    const volumeStep = 1 / (fadeDuration * 10); // Шаг уменьшения громкости
+
+                    const fadeInterval = setInterval(() => {
+                        if (starterAudio.volume > volumeStep) {
+                            starterAudio.volume -= volumeStep;
+                        } else {
+                            starterAudio.volume = 0;
+                            starterAudio.pause();
+                            clearInterval(fadeInterval);
+                        }
+                    }, stepTime);
+                }, fadeStart);
+            }
+        }
+
+        function playKachowSound() {
+            const randomSrc = kachowSounds[Math.floor(Math.random() * kachowSounds.length)];
+            playAudio(randomSrc, 0.9);
+        }
 
         const perfumes = [
             {
@@ -544,6 +680,7 @@
 
                 card.addEventListener('click', () => {
                     let currentState = parseInt(card.dataset.state);
+
                     const views = card.querySelectorAll('.view');
                     const footerAction = card.querySelector('.footer-action');
 
@@ -551,6 +688,12 @@
                     currentState = (currentState + 1) % 3;
                     card.dataset.state = currentState;
                     views[currentState].classList.add('active');
+
+                    if (currentState === 0) {
+                        playKachowSound();
+                        card.classList.add('kachow-anim');
+                        setTimeout(() => card.classList.remove('kachow-anim'), 500);
+                    }
 
                     if (currentState === 0) footerAction.textContent = uiTexts[currentLang].nextDesc;
                     if (currentState === 1) footerAction.textContent = uiTexts[currentLang].nextNotes;
