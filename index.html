@@ -491,10 +491,22 @@
             }
         }
 
+        function preloadAllImages() {
+            mcqueenImages.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+            perfumes.forEach(p => {
+                if (p.img) {
+                    const img = new Image();
+                    img.src = p.img;
+                }
+            });
+        }
+
         function triggerFlyingMcQueen() {
             const randomImgSrc = mcqueenImages[Math.floor(Math.random() * mcqueenImages.length)];
             const img = document.createElement('img');
-            img.src = randomImgSrc;
             img.className = 'flying-mcqueen';
 
             const w = window.innerWidth;
@@ -549,21 +561,33 @@
             img.style.top = `0px`;
             img.style.transition = 'none';
             img.style.transform = `translate3d(${startX}px, ${startY}px, 0) rotate(${angle.toFixed(1)}deg) scale(${scale})`;
+            img.src = randomImgSrc;
 
-            document.body.appendChild(img);
+            const startAnimation = () => {
+                document.body.appendChild(img);
 
-            // Принудительный reflow
-            void img.offsetHeight;
+                // Принудительный reflow
+                void img.offsetHeight;
 
-            // Плавный пролёт с более мягким плавным замедлением (ease-out)
-            img.style.transition = `transform ${duration}s cubic-bezier(0.25, 1, 0.35, 1)`;
-            img.style.transform = `translate3d(${endX}px, ${endY}px, 0) rotate(${angle.toFixed(1)}deg) scale(${scale})`;
+                // Плавный пролёт с более мягким плавным замедлением (ease-out)
+                img.style.transition = `transform ${duration}s cubic-bezier(0.25, 1, 0.35, 1)`;
+                img.style.transform = `translate3d(${endX}px, ${endY}px, 0) rotate(${angle.toFixed(1)}deg) scale(${scale})`;
 
-            setTimeout(() => {
-                if (img.parentNode) {
-                    img.parentNode.removeChild(img);
-                }
-            }, parseFloat(duration) * 1000 + 200);
+                setTimeout(() => {
+                    if (img.parentNode) {
+                        img.parentNode.removeChild(img);
+                    }
+                }, parseFloat(duration) * 1000 + 200);
+            };
+
+            if (img.decode) {
+                img.decode().then(startAnimation).catch(startAnimation);
+            } else if (img.complete) {
+                startAnimation();
+            } else {
+                img.onload = startAnimation;
+                img.onerror = startAnimation;
+            }
         }
 
         function playKachowSound() {
@@ -833,6 +857,7 @@
         }
 
         renderGallery();
+        preloadAllImages();
     </script>
 </body>
 
