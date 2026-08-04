@@ -361,8 +361,7 @@
             max-height: 320px;
             object-fit: contain;
             filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5));
-            transition: transform 1.2s cubic-bezier(0.15, 0.85, 0.35, 1.2), left 1.2s linear, top 1.2s linear !important;
-            will-change: transform, left, top;
+            will-change: transform;
         }
 
         @media (max-width: 600px) {
@@ -425,13 +424,28 @@
             './mcqueen8.png'
         ];
 
-        function playAudio(src, volume = 1.0) {
+        function playAudio(src, targetVolume = 1.0) {
             try {
                 const audio = new Audio(src);
-                audio.volume = volume;
+                // 1. Стартуем с нулевой громкости, чтобы не было щелчка/всплеска
+                audio.volume = 0;
+
                 const promise = audio.play();
                 if (promise !== undefined) {
-                    promise.catch(err => {
+                    promise.then(() => {
+                        // 2. Мягкий микро-въезд (micro fade-in) за 80 мс до целевой громкости
+                        let v = 0;
+                        const step = targetVolume / 8;
+                        const fadeIn = setInterval(() => {
+                            v += step;
+                            if (v >= targetVolume) {
+                                audio.volume = targetVolume;
+                                clearInterval(fadeIn);
+                            } else {
+                                audio.volume = v;
+                            }
+                        }, 10);
+                    }).catch(err => {
                         console.warn("Аудио заблокировано или не найдено:", src, err);
                     });
                 }
@@ -444,19 +458,21 @@
 
         function startApp() {
             const overlay = document.getElementById('starter-overlay');
-            playAudio('./starter.mp3', 1.0);
 
+            // Запускаем starter.mp3 (СТРОГО ОДИН ВЫЗОВ)
             const starterAudio = playAudio('./starter.mp3', 1.0);
 
+            // Плавное исчезновение стартового экрана
             overlay.style.opacity = '0';
             setTimeout(() => {
                 overlay.style.display = 'none';
             }, 800);
 
+            // Затухание за 5 секунд до конца (с 14-й по 19-ю секунду)
             if (starterAudio) {
                 const totalDuration = 19;
-                const fadeDuration = 7;
-                const fadeStart = (totalDuration - fadeDuration) * 1000;
+                const fadeDuration = 5;
+                const fadeStart = (totalDuration - fadeDuration) * 1000; // 14000 мс
 
                 setTimeout(() => {
                     const stepTime = 100;
@@ -483,68 +499,65 @@
 
             const w = window.innerWidth;
             const h = window.innerHeight;
-            const offset = 300; // Безопасный отступ за экраном
+            const offset = 500;
 
             // 0: верх, 1: право, 2: низ, 3: лево
             const startSide = Math.floor(Math.random() * 4);
             let startX, startY;
 
-            // Точки старта
             if (startSide === 0) { // Верх
-                startX = Math.random() * (w * 0.8) + (w * 0.1);
+                startX = Math.random() * w;
                 startY = -offset;
             } else if (startSide === 1) { // Право
                 startX = w + offset;
-                startY = Math.random() * (h * 0.8) + (h * 0.1);
+                startY = Math.random() * h;
             } else if (startSide === 2) { // Низ
-                startX = Math.random() * (w * 0.8) + (w * 0.1);
+                startX = Math.random() * w;
                 startY = h + offset;
             } else { // Лево
                 startX = -offset;
-                startY = Math.random() * (h * 0.8) + (h * 0.1);
+                startY = Math.random() * h;
             }
 
-            // Гарантированно ПРОТИВОПОЛОЖНАЯ сторона (без сложных смещений)
             const oppositeSide = (startSide + 2) % 4;
             let endX, endY;
 
-            // Точки финиша
             if (oppositeSide === 0) { // Верх
-                endX = Math.random() * (w * 0.8) + (w * 0.1);
+                endX = Math.random() * w;
                 endY = -offset;
             } else if (oppositeSide === 1) { // Право
                 endX = w + offset;
-                endY = Math.random() * (h * 0.8) + (h * 0.1);
+                endY = Math.random() * h;
             } else if (oppositeSide === 2) { // Низ
-                endX = Math.random() * (w * 0.8) + (w * 0.1);
+                endX = Math.random() * w;
                 endY = h + offset;
             } else { // Лево
                 endX = -offset;
-                endY = Math.random() * (h * 0.8) + (h * 0.1);
+                endY = Math.random() * h;
             }
 
-            // Вектор и угол движения
             const deltaX = endX - startX;
             const deltaY = endY - startY;
             const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
 
             const scale = (Math.random() * 0.25 + 0.95).toFixed(2);
-            const duration = (Math.random() * 0.3 + 0.85).toFixed(2);
 
-            // Анимация ТОЛЬКО через transform (без анимации left/top — это исключает дуги)
+            // ⏱ УМЕНЬШИЛИ СКОРОСТЬ (Увеличили время полёта до 1.4s - 1.8s)
+            const duration = (Math.random() * 0.4 + 3).toFixed(2);
+
             img.style.left = `0px`;
             img.style.top = `0px`;
-            img.style.transition = `transform ${duration}s cubic-bezier(0.2, 0.8, 0.2, 1)`;
-
-            // Стартовая позиция
+            img.style.transition = 'none';
             img.style.transform = `translate3d(${startX}px, ${startY}px, 0) rotate(${angle.toFixed(1)}deg) scale(${scale})`;
 
             document.body.appendChild(img);
 
-            // Финишная позиция по прямой
-            setTimeout(() => {
-                img.style.transform = `translate3d(${endX}px, ${endY}px, 0) rotate(${angle.toFixed(1)}deg) scale(${scale})`;
-            }, 40);
+            // Принудительный reflow
+            void img.offsetHeight;
+
+            // Плавный пролёт с более мягким плавным замедлением (ease-out)
+            img.style.transition = `transform ${duration}s cubic-bezier(0.25, 1, 0.35, 1)`;
+            img.style.transform = `translate3d(${endX}px, ${endY}px, 0) rotate(${angle.toFixed(1)}deg) scale(${scale})`;
 
             setTimeout(() => {
                 if (img.parentNode) {
