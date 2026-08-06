@@ -1057,6 +1057,7 @@
 
         function renderStars(container, index, currentRating) {
             container.innerHTML = '';
+            container.onclick = (e) => e.stopPropagation();
             for (let i = 1; i <= 10; i++) {
                 const star = document.createElement('span');
                 star.className = 'star-btn' + (i <= currentRating ? ' active' : '');
@@ -1196,13 +1197,6 @@
                 const starsContainer = card.querySelector(`#stars-container-${index}`);
                 renderStars(starsContainer, index, rev.rating || 0);
 
-                // Предотвращение переворота карточки при взаимодействии с элементами отзыва
-                const reviewView = card.querySelector('.view-review');
-                if (reviewView) {
-                    ['click', 'mousedown', 'keydown', 'touchstart'].forEach(evtType => {
-                        reviewView.addEventListener(evtType, (e) => e.stopPropagation());
-                    });
-                }
 
                 // Инпут заметок
                 const textarea = card.querySelector(`#notes-input-${index}`);
